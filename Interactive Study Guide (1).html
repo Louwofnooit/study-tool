@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ML 292 — Scenario Study Tool</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --border:#2a2f3a;
+    --text:#e7e9ee; --sub:#9aa3b2; --accent:#6ea8fe; --accent2:#8b7cf6;
+    --good:#4ade80; --warn:#fbbf24; --bad:#f87171; --mono:'SFMono-Regular',Consolas,Menlo,monospace;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    background:radial-gradient(circle at 20% -10%, #1c2130 0%, var(--bg) 45%);
+    color:var(--text); min-height:100vh; padding-bottom:60px;
+  }
+  header{
+    padding:36px 24px 20px; max-width:1000px; margin:0 auto;
+  }
+  header h1{
+    font-size:1.7rem; margin:0 0 6px; letter-spacing:-0.02em;
+    background:linear-gradient(90deg,#fff,#a9b8ff); -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  header p{color:var(--sub); margin:0; font-size:0.95rem; max-width:640px; line-height:1.5;}
+
+  .stats{
+    display:flex; gap:12px; margin:20px auto 0; max-width:1000px; padding:0 24px; flex-wrap:wrap;
+  }
+  .stat{
+    background:var(--panel); border:1px solid var(--border); border-radius:14px;
+    padding:14px 18px; flex:1; min-width:120px;
+  }
+  .stat .num{font-size:1.5rem; font-weight:700; color:var(--accent);}
+  .stat .lbl{font-size:0.75rem; color:var(--sub); text-transform:uppercase; letter-spacing:0.04em;}
+
+  .insight{
+    max-width:1000px; margin:20px auto 0; padding:0 24px;
+  }
+  .insight-box{
+    background:linear-gradient(135deg,#211d3a,#1a1f30); border:1px solid #3a3560;
+    border-radius:14px; padding:18px 20px; font-size:0.9rem; line-height:1.6; color:#d8d5f5;
+  }
+  .insight-box b{color:#c9bfff;}
+
+  .controls{
+    max-width:1000px; margin:22px auto 0; padding:0 24px;
+    display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+  }
+  #search{
+    flex:1; min-width:200px; background:var(--panel); border:1px solid var(--border);
+    border-radius:10px; padding:11px 14px; color:var(--text); font-size:0.9rem;
+  }
+  #search:focus{outline:none; border-color:var(--accent);}
+  .chip{
+    background:var(--panel); border:1px solid var(--border); color:var(--sub);
+    padding:8px 14px; border-radius:999px; font-size:0.82rem; cursor:pointer; white-space:nowrap;
+    transition:all .15s;
+  }
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#0b1020; border-color:var(--accent); font-weight:600;}
+
+  main{max-width:1000px; margin:0 auto; padding:20px 24px;}
+
+  .topic{margin-bottom:34px;}
+  .topic-head{
+    display:flex; align-items:baseline; justify-content:space-between; gap:10px;
+    margin-bottom:4px; flex-wrap:wrap;
+  }
+  .topic-head h2{font-size:1.15rem; margin:0; color:#fff;}
+  .freq{
+    font-size:0.75rem; padding:4px 10px; border-radius:999px; font-weight:600;
+    background:rgba(110,168,254,0.15); color:var(--accent); white-space:nowrap;
+  }
+  .freq.hot{background:rgba(248,113,113,0.15); color:var(--bad);}
+  .topic-desc{color:var(--sub); font-size:0.85rem; margin:2px 0 14px; line-height:1.5;}
+
+  .card{
+    background:var(--panel); border:1px solid var(--border); border-radius:14px;
+    margin-bottom:12px; overflow:hidden;
+  }
+  .card-head{
+    padding:15px 18px; display:flex; justify-content:space-between; align-items:center;
+    cursor:pointer; gap:10px;
+  }
+  .card-head:hover{background:var(--panel2);}
+  .card-source{
+    font-size:0.72rem; color:var(--accent2); font-weight:700; text-transform:uppercase; letter-spacing:0.03em;
+    margin-bottom:4px;
+  }
+  .card-q{font-size:0.93rem; line-height:1.5; color:var(--text);}
+  .card-right{display:flex; align-items:center; gap:10px; flex-shrink:0;}
+  .marks{
+    font-family:var(--mono); font-size:0.78rem; color:var(--warn); background:rgba(251,191,36,0.1);
+    padding:3px 9px; border-radius:7px; white-space:nowrap;
+  }
+  .caret{color:var(--sub); transition:transform .2s; font-size:0.8rem;}
+  .card.open .caret{transform:rotate(90deg);}
+
+  .card-body{
+    max-height:0; overflow:hidden; transition:max-height .25s ease;
+    border-top:1px solid transparent;
+  }
+  .card.open .card-body{border-top:1px solid var(--border); max-height:3000px;}
+  .card-inner{padding:16px 18px 18px;}
+  .answer-lbl{font-size:0.72rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--good); font-weight:700; margin-bottom:8px;}
+  .answer ul{margin:0; padding-left:20px;}
+  .answer li{margin-bottom:7px; line-height:1.55; font-size:0.9rem; color:#d6dae2;}
+  .answer li b{color:#fff;}
+  .sections{margin-top:12px; display:flex; flex-wrap:wrap; gap:6px;}
+  .sec-tag{
+    font-family:var(--mono); font-size:0.72rem; background:var(--panel2); color:var(--sub);
+    border:1px solid var(--border); padding:3px 8px; border-radius:6px;
+  }
+
+  .progress-btns{display:flex; gap:8px; margin-top:14px;}
+  .pbtn{
+    flex:1; padding:8px 0; border-radius:8px; border:1px solid var(--border); background:transparent;
+    color:var(--sub); font-size:0.78rem; cursor:pointer; transition:all .15s;
+  }
+  .pbtn:hover{border-color:var(--sub);}
+  .pbtn.confident.active{background:rgba(74,222,128,0.15); border-color:var(--good); color:var(--good);}
+  .pbtn.review.active{background:rgba(248,113,113,0.15); border-color:var(--bad); color:var(--bad);}
+
+  .card.tag-confident{border-left:3px solid var(--good);}
+  .card.tag-review{border-left:3px solid var(--bad);}
+
+  .hidden{display:none !important;}
+
+  footer{
+    text-align:center; color:var(--sub); font-size:0.78rem; padding:30px 24px 10px;
+  }
+
+  ::-webkit-scrollbar{width:8px;}
+  ::-webkit-scrollbar-thumb{background:#333; border-radius:4px;}
+
+  .mark-breakdown{
+    margin-top:14px; padding:13px 14px; border:1px solid var(--border);
+    background:rgba(110,168,254,0.06); border-radius:10px;
+  }
+  .mark-breakdown-title{
+    font-size:0.72rem; text-transform:uppercase; letter-spacing:0.05em;
+    color:var(--warn); font-weight:700; margin-bottom:8px;
+  }
+  .mark-breakdown ul{margin:0; padding-left:20px;}
+  .mark-breakdown li{
+    margin-bottom:6px; line-height:1.45; font-size:0.84rem; color:#cfd5df;
+  }
+  .mark-breakdown li:last-child{margin-bottom:0;}
+  .mark-breakdown-note{
+    margin-top:8px; color:var(--sub); font-size:0.72rem; line-height:1.4;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Mercantile Law 292 — Scenario Study Tool</h1>
+  <p>Every scenario question from the 2018–2024 papers plus Tutorials 7 &amp; 8, grouped by legal topic with the official memo solutions. Click a question to reveal the answer and the individual mark allocation, taken directly from each memorandum.</p>
+</header>
+
+<div class="stats" id="stats"></div>
+
+<div class="insight">
+  <div class="insight-box" id="insightBox"></div>
+</div>
+
+<div class="controls">
+  <input id="search" type="text" placeholder="Search a scenario, section number, or case name…" oninput="renderAll()">
+</div>
+<div class="controls" id="chipRow"></div>
+
+<main id="main"></main>
+
+<footer>Built from 2018–2024 A1S2 papers &amp; Tutorials 7–8 · Progress is saved in this browser only</footer>
+
+<script>
+const DATA = [
+  {
+    id: "fa",
+    title: "Financial Assistance for Share Acquisition (s44)",
+    desc: "The single most repeated scenario type across every year sampled. Always solved with the same two-question framework: (1) Was financial assistance given? (2) Was it for the purpose of / in connection with acquiring shares? Watch for the s44(1) lending-business exclusion and MOI override.",
+    hot: true,
+    questions: [
+      {
+        source: "2018 A1S2 · Q5",
+        marks: "10",
+        q: "EC's board is willing to stand surety for a R300 000 bank loan to Prune, who is using the loan (plus R200 000 cash) to buy Tanya's shares (R400 000) and her R100 000 credit loan account for a total of R500 000. Must the Companies Act's financial assistance requirements be met, and what are they?",
+        sections: ["s44(2)", "s44(3)", "s44(4)"],
+        a: [
+          "Standing surety is a listed example of financial assistance under <b>s44(2)</b>.",
+          "Because part of the R300 000 loan clearly pays for the shares (R400 000 of the R500 000 price relates to shares), the surety <b>is</b> financial assistance for the purpose of acquiring shares.",
+          "Four requirements must all be met: (1) a special resolution of shareholders within the previous 2 years covering this recipient/category; (2) the board is satisfied the company will pass the solvency and liquidity test immediately after; (3) the board is satisfied the terms are fair and reasonable to the company; (4) any MOI requirements are satisfied."
+        ]
+      },
+      {
+        source: "2019 A1S2 · Q3(a)",
+        marks: "5",
+        q: "Fruits Ltd. may provide security for Cabbage's loan to subscribe for Class C shares. Discuss the requirements that apply under the Companies Act.",
+        sections: ["s44(2)", "s44(3)", "s44(4)"],
+        a: [
+          "s44(2): the board may authorise the company to provide financial assistance for the purpose of, or in connection with, subscribing for or purchasing the company's securities — subject to s44(3) and (4).",
+          "The assistance here is via standing surety for the loan, which is one of the recognised forms.",
+          "s44(3): needs either an employee share scheme (not applicable here) or a special resolution passed within the previous 2 years covering the recipient/category; plus the board satisfied on solvency and liquidity, and that the terms are fair and reasonable.",
+          "s44(4): any MOI conditions/restrictions on granting financial assistance must also be satisfied."
+        ]
+      },
+      {
+        source: "2019 A1S2 · Q3(b)",
+        marks: "2",
+        q: "Would the answer differ if Cabbage was instead purchasing Naartjie's credit loan account (not shares) in Fruits Ltd., with Fruits Ltd. standing surety for that loan?",
+        sections: ["s44(2)"],
+        a: [
+          "Yes — s44(2) only covers assistance for the purpose of, or in connection with, subscribing for or purchasing <b>securities</b>.",
+          "Purchasing a credit loan account is not connected to acquiring shares, so standing surety for it is some form of assistance but does not fall within s44(2) at all."
+        ]
+      },
+      {
+        source: "2019 A1S2 · Q3(c)",
+        marks: "2",
+        q: "Would the answer to (a) differ if the MOI specifically prohibited Fruits Ltd. from rendering any form of aid to acquire its securities?",
+        sections: ["s44(2) — alterable provision"],
+        a: [
+          "Yes — s44(2) is an alterable provision (\"except to the extent the MOI provides otherwise\").",
+          "An MOI can validly prohibit financial assistance entirely, in which case the company is barred from assisting Cabbage regardless of the form the assistance takes."
+        ]
+      },
+      {
+        source: "2022 A1S2 · Q3",
+        marks: "10",
+        q: "Ms Smith wants to buy shares from Ms Dikgale but lacks funds. Analog's board is considering providing financial assistance. A 2021 special resolution authorised financial assistance for women under 35. Discuss the requirements and whether the board may assist — and what recourse exists if the requirements weren't properly satisfied.",
+        sections: ["s44(2)", "s44(3)", "s77(5)"],
+        a: [
+          "s44(2) applies (MOI does not prohibit financial assistance); the board may authorise it subject to s44(3).",
+          "Requirement 1: financial assistance must be pursuant to an employee share scheme OR a special resolution within the previous 2 years covering the recipient/category — <b>Ms Smith (a woman under 35) falls within the 2021 resolution's category</b>, so this is satisfied.",
+          "Requirement 2: the board must be satisfied the company will pass the solvency and liquidity test immediately after.",
+          "Requirement 3: the board must be satisfied the terms are fair and reasonable to the company.",
+          "If all three are met, the board is empowered to assist. If the requirements were not properly satisfied, <b>s77(5)</b> allows the affected director or the company to apply to court to set aside the board's decision, or for any other just and equitable order."
+        ]
+      },
+      {
+        source: "2023 A1S2 · Q2(a)",
+        marks: "10",
+        q: "XYZ Ltd. agrees to stand as security for Zolisa's loan (from ABSA) to buy shares in XYZ Ltd. Must the requirements of s44(3) be met?",
+        sections: ["s44(1)", "s44(2)", "case law: Lipschitz v UDC Bank", "case law: Gradwell v Rostra Printers"],
+        a: [
+          "Two-question framework — Question 1: <b>was there financial assistance?</b> s44(1) exclusion doesn't apply; providing a guarantee/security is a listed s44(2) example (Lipschitz v UDC Bank) — strong indicator of FA.",
+          "Apply the impoverishment test (Gradwell v Rostra Printers): narrow sense (is the company financially worse off — no money borrowed by the company itself) vs. wide sense (is the company commercially worse off — yes, since it now bears risk if the buyer defaults).",
+          "Other factors: not in the ordinary course of business; no clear benefit to the company. Conclusion: financial assistance was granted.",
+          "Question 2: <b>was it for the purpose of / in connection with acquiring shares?</b> The direct goal of the guarantee is to enable the share purchase — no need to fall back on 'in connection with' once the direct purpose is established.",
+          "Both questions answered positively → s44(3) applies and its requirements must be met."
+        ]
+      },
+      {
+        source: "2023 A1S2 · Q2(b)",
+        marks: "2",
+        q: "How would the answer differ if XYZ Ltd.'s primary business was the lending of money?",
+        sections: ["s44(1)"],
+        a: [
+          "s44(1) would then apply — the exclusion for a company lending money in the ordinary course of business where money-lending is its primary business — so the s44(3) requirements would not need to be met."
+        ]
+      },
+      {
+        source: "2024 A1S2 · Q1",
+        marks: "10",
+        q: "Sweet Tooth (Pty) Ltd. agrees to buy Arinda's Ford Mustang so that Arinda can afford to buy Lauren's R100 000 shares in the company. Does s44(3) apply?",
+        sections: ["s44(1)", "s44(2)", "Lipschitz v UDC Bank", "Gradwell v Rostra Printers"],
+        a: [
+          "Question 1 — financial assistance? s44(1) doesn't apply. None of the s44(2) examples apply on these facts (<i>Lipschitz v UDC Bank</i> confirms that falling within one of those listed examples is a strong indicator of FA — but this is an asset purchase, so none strictly fit) — so the impoverishment test (<i>Gradwell v Rostra Printers</i>) must be applied instead.",
+          "Narrow sense (Gradwell): not financially worse off — the company received an asset (the vehicle) in exchange for its money, so its financial position is unchanged.",
+          "Wide sense (Gradwell): commercially worse off — the asset isn't used to generate profit for the business, so this is a worse commercial position.",
+          "Not in the ordinary course of business, no benefit to the company → financial assistance was granted.",
+          "Question 2: was it for the purpose of the share purchase? Yes — the transaction's purpose was to put Arinda in funds to buy the shares, not truly to acquire a business asset. → s44(3) applies."
+        ]
+      },
+      {
+        source: "Tutorial 8 · Q2",
+        marks: "10",
+        q: "Johanna wants to buy Bonginkosi's 100 shares AND his credit loan account in Le Clos (Pty) Ltd., conditional on the company guaranteeing repayment of the loan (in instalments). Must s44(3)'s requirements be met?",
+        sections: ["s44(1)", "s44(2)", "Lipschitz v UDC Bank", "Gradwell v Rostra Printers"],
+        a: [
+          "Question 1: was there FA? Providing security is a listed s44(2) example (Lipschitz) — indicates FA. s44(1) doesn't apply.",
+          "Impoverishment test: narrow sense — no, liabilities are just reorganised, not increased. Wide sense — no, the company is arguably in a <b>better</b> commercial position (certainty over repayment terms vs. repayable on demand). No other factor points to FA either.",
+          "Question 2: was it for the purpose of/in connection with acquiring shares? The direct purpose of the guarantee was to secure repayment of the <b>credit loan account</b>, not to fund the share purchase — even though it facilitated the sale indirectly.",
+          "Conclusion: <b>No</b> — the requirements of s44(3) do not have to be met. (Same reasoning pattern as 2019 Q3(b) — worth comparing the two side by side.)"
+        ]
+      }
+    ]
+  },
+  {
+    id: "prospectus",
+    title: "Offer to the Public & Prospectus Requirements (ss 95–100, 107)",
+    desc: "Second most repeated topic. Standard test: (1) is it an 'offer to the public' under s95(1)(h)? (2) does an s96 exclusion apply? (3) is it a 'primary offering' under s95(1)(i)? (4) does s99 require a registered prospectus (listed vs unlisted securities)? Note: the 2024 exam question and Tutorial 7 Q2 use the near-identical 'Pastries Ltd.' fact pattern — a strong signal of what to expect again.",
+    hot: true,
+    questions: [
+      {
+        source: "2018 A1S2 · Q3",
+        marks: "5",
+        q: "EC plans a non-renounceable offer to all women in South Africa to subscribe for 100 000 shares. Must a prospectus be registered?",
+        sections: ["s95 'offer to the public'", "s95 'primary offering'", "s99(3)(a)(ii)"],
+        a: [
+          "The offer is made to a section of the public (all women in SA); no exclusion applies → it is an 'offer to the public'.",
+          "It is a primary offering (new shares to be issued by the company) but not an initial public offering, since EC had already made a public offer previously.",
+          "A primary offering of <b>unlisted</b> shares requires registration of a prospectus (s99(3)(a)(ii))."
+        ]
+      },
+      {
+        source: "2019 A1S2 · Q2(b)",
+        marks: "3",
+        q: "Fruits Ltd. wants to offer 700 Class D shares to women in the Western Cape. Fruits Ltd. (part of a group) has previously made debentures available to the public. Does this qualify as an offer to the public, and what measure applies?",
+        sections: ["s95(1)(h)", "s95(1)(i)", "s99(3)(a)"],
+        a: [
+          "This is an offer to a section of the public (women in the Western Cape) → an 'offer to the public'.",
+          "It's a primary offer since new shares are being issued by the company.",
+          "Because listed/unlisted status isn't specified, the default assumption is unlisted, so s99(3)(a)(ii)'s prospectus requirement applies (marks were awarded flexibly here if a student reasoned about exchange rules instead)."
+        ]
+      },
+      {
+        source: "2019 A1S2 · Q2(c)",
+        marks: "2",
+        q: "What was the finding in Goldfields Ltd v Harmony Gold Mining Co Ltd (Case No. 559/04)?",
+        sections: ["Goldfields v Harmony Gold"],
+        a: [
+          "The offer in that case was made to existing shareholders to acquire specific private property, not as a mere section of the public.",
+          "It was therefore <b>not</b> an offer to the public requiring a prospectus."
+        ]
+      },
+      {
+        source: "2023 A1S2 · Q1(a)",
+        marks: "10",
+        q: "XYZ Ltd. makes a non-renounceable offer to existing shareholders <b>and</b> directors to subscribe for Class B shares (unlisted). Must a prospectus be registered?",
+        sections: ["s95(1)(h)", "s96(1)(c)", "s95(1)(i)", "s99(3)(a)(ii)"],
+        a: [
+          "It is an offer to a selection of the public (holders of the company's securities) — prima facie an 'offer to the public'.",
+          "s96(1)(c) excludes non-renounceable offers made <b>only</b> to existing shareholders/related persons — but here the offer also went to directors who are not existing shareholders, so the exclusion does <b>not</b> apply.",
+          "Key principle: the test is <b>to whom the offer is made</b>, not who actually accepts it.",
+          "It is a primary offering (not an IPO, since June 2022 was the initial public offer). As the securities are unlisted, s99(3)(a)(ii) requires a registered prospectus."
+        ]
+      },
+      {
+        source: "2024 A1S2 · Q4",
+        marks: "9",
+        q: "Pastries Ltd. (securities <b>listed</b> on the JSE) makes an offer to bakers in Cape Town — including three of its own directors — to subscribe for shares. Must a prospectus be registered?",
+        sections: ["s95(1)(h)", "Goldfields v Harmony Gold", "s96(1)(e)", "s99(3)(a)(i)"],
+        a: [
+          "Offer to a section of the public (bakers in Cape Town) → offer to the public, per the Goldfields test (capable of extending to the public at large / a random section).",
+          "s96(1)(e)'s director-only exclusion doesn't apply since the offer went beyond directors to bakers generally.",
+          "It's a primary offering, following an earlier IPO. <b>Because the securities are listed</b>, s99(3)(a)(i) applies instead of (a)(ii): a primary offer of <b>listed</b> securities must simply follow the relevant exchange's rules — <b>no prospectus is required</b>.",
+          "Compare directly with Tutorial 7 Q2 below — same 'Pastries Ltd.' company and near-identical facts, but there the securities were unlisted, flipping the conclusion."
+        ]
+      },
+      {
+        source: "Tutorial 7 · Q2",
+        marks: "9",
+        q: "Pastries Ltd. (securities <b>unlisted</b>) offers remaining Class A shares to bakery owners in Cape Town, including three directors, who alone accept. Must a prospectus be registered?",
+        sections: ["s95(1)(h)", "Goldfields v Harmony Gold", "s95(1)(i)", "s99(3)(a)(ii)"],
+        a: [
+          "Same reasoning as 2024 Q4 up to the listed/unlisted split: offer to a section of the public (bakery owners) → offer to the public, per <i>Gold Fields Ltd v Harmony Gold Mining Co Ltd</i> (SCA) — an offer to the public must at least be capable of being extended to and accepted by the public at large or a random section of it.",
+          "Primary offering, not an IPO (prior public offer already made).",
+          "<b>Because the securities are unlisted here</b>, s99(3)(a)(ii) applies: a registered prospectus satisfying s100 <b>is</b> required.",
+          "⚡ Near-duplicate of the 2024 exam question — same company name and structure, opposite listed/unlisted twist. Learn to spot this fork instantly."
+        ]
+      },
+      {
+        source: "Tutorial 7 · Q3",
+        marks: "5",
+        q: "Pink Panther Ltd. filed its prospectus on 10 Jan 2026, it was registered 1 Feb 2026, and issued to the public on 5 May 2026; shares were allotted 15 May 2026. Does the timing comply with the Act?",
+        sections: ["s99(11)", "s107"],
+        a: [
+          "s99(11): a prospectus may not be issued more than 3 months after registration. Registered 1 Feb → had to be issued by 1 May. It was issued 5 May → <b>non-compliant</b>, and is treated as unregistered.",
+          "s107: a company may not allot shares/accept subscriptions more than 4 months after the prospectus was <b>filed</b> (not registered/issued). Filed 10 Jan → stale after 10 May.",
+          "Shares were allotted 15 May — outside the 4-month window → also non-compliant with s107.",
+          "This is a distinct 'timing' angle on prospectus law, worth knowing separately from the standard offer-to-the-public analysis above."
+        ]
+      }
+    ]
+  },
+  {
+    id: "distributions",
+    title: "Distributions, Share Buybacks & Director Liability (ss 46, 48)",
+    desc: "Covers when a transaction counts as a 'distribution', the solvency-and-liquidity test, requirements for a company buying back its own shares (especially from a director), and when directors become personally liable for an unlawful distribution.",
+    hot: true,
+    questions: [
+      {
+        source: "2018 A1S2 · Q2(d)",
+        marks: "3",
+        q: "The board decides EC will buy back 5 000 of the shares owned by Nondu (a director). Is board authority alone sufficient?",
+        sections: ["s48(8)(a)"],
+        a: [
+          "No — the company is acquiring its own shares from a director, so a <b>special resolution of shareholders</b> is required under s48(8)(a); the board cannot decide this alone."
+        ]
+      },
+      {
+        source: "2019 A1S2 · Q2(a)",
+        marks: "5 (max)",
+        q: "Fruits Ltd. regrets issuing Class B shares (not redeemable) and wants a plan of action so that no Class B shares remain in issue. What must be satisfied?",
+        sections: ["s48(2)(a)", "s46(1)", "s48(3)", "s48(8)(a)"],
+        a: [
+          "The board may resolve the company will acquire its own shares (s48(2)(a)), subject to s46 (the distribution requirements).",
+          "s46(1): a distribution requires board authorisation, and the board must reasonably conclude the company will satisfy the solvency and liquidity test immediately after.",
+          "s48(3) bars an acquisition if it would leave no shares in issue other than convertible/redeemable shares held by subsidiaries — not triggered here since other classes remain.",
+          "Since some of the Class B shares belong to a director, s48(8)(a) requires a special resolution for that portion.",
+          "Resulting status of the acquired shares: authorised but not issued (s35(5)(a))."
+        ]
+      },
+      {
+        source: "2022 A1S2 · Q2",
+        marks: "10",
+        q: "Cornelia Ltd. wants to decrease its issued share capital via a share repurchase. What are the requirements, and what if a major debtor turns out to be insolvent after approval, threatening the company's ability to pay its debts post-repurchase?",
+        sections: ["s46", "s48(2)/(3)", "court remedies"],
+        a: [
+          "A repurchase is a distribution — solvency and liquidity tests apply; the company must retain shares other than convertible/redeemable ones after the buyback, and shares must remain held by non-subsidiary holders; a director-source repurchase needs a special resolution.",
+          "If it later emerges the requirements can't be met, the underlying agreement remains enforceable — the company must apply to court for an order suspending the repurchase.",
+          "The company bears the onus of proving it can't meet the requirements; the court can make any just and equitable order ensuring payment as soon as practicable without breaching other obligations.",
+          "If the repurchase has already completed unlawfully, the company must apply within 2 years for a court order reversing it (shares reissued, consideration returned) — and directors who approved it face the same liability as for any unlawful distribution."
+        ]
+      },
+      {
+        source: "2023 A1S2 · Q3",
+        marks: "3",
+        q: "List the conditions for a director to be held personally liable for a distribution that doesn't comply with the Act.",
+        sections: ["s46(6)"],
+        a: [
+          "The director must have been present at the meeting where the distribution/acquisition was approved (or participated in the decision); <b>and</b>",
+          "failed to vote against it despite knowing it did not meet the Act's requirements."
+        ]
+      },
+      {
+        source: "2024 A1S2 · Q2",
+        marks: "5",
+        q: "XYZ Ltd. transfers a company vehicle to shareholder Jaco instead of declaring a dividend. Is this a 'distribution', and does s46 apply?",
+        sections: ["s1 'distribution'", "s46"],
+        a: [
+          "The definition of 'distribution' in s1 includes the transfer of property (as well as incurring or waiving debt) to a shareholder.",
+          "Transferring the vehicle to Jaco, a shareholder, is therefore a distribution, and it must comply with s46's solvency-and-liquidity and authorisation requirements."
+        ]
+      },
+      {
+        source: "Tutorial 8 · Q1",
+        marks: "11",
+        q: "Golden Gate (Pty) Ltd.'s board approves buying back director Sizwe's ordinary shares for R600 000, despite being warned the company can only lawfully distribute R450 000 and would fail solvency-and-liquidity, and only redeemable shares would remain after. Shareholders never approved by special resolution. Directors vote in favour anyway; R50 000 is later recovered from Sizwe. (a) Did the acquisition comply with s48? (b) Can directors be personally liable, and for how much?",
+        sections: ["s48(8)(a)", "s48(3)", "s48(7)/s77(3)(e)(vii)"],
+        a: [
+          "(a) Non-compliant on two counts: no special resolution for a director-source buyback (s48(8)(a)); and it would leave only redeemable shares in issue, which s48(3) prohibits outright.",
+          "(b) Directors are personally liable where they were present/participated, and voted for the acquisition despite knowing it breached ss46/48 — satisfied here since the financial manager expressly warned them beforehand.",
+          "Liability calculation: amount actually distributed (R600 000) minus the maximum lawful amount (R450 000) = excess distribution of R150 000, minus the R50 000 recovered from Sizwe = <b>R100 000 potential liability</b>.",
+          "This is the clearest worked example of the liability calculation across all the material — good one to redo from memory."
+        ]
+      }
+    ]
+  },
+  {
+    id: "authshares",
+    title: "Increasing / Amending Authorised Shares (s36) & MOI Amendment",
+    desc: "Who can change the number of authorised shares — the board, the shareholders (special resolution), or both — and how the MOI can restrict this.",
+    questions: [
+      {
+        source: "2018 A1S2 · Q2(b)",
+        marks: "2",
+        q: "The board decides to increase authorised ordinary shares from 300 000 to 500 000. Authorised without a special resolution?",
+        sections: ["s36(2)(a)"],
+        a: [
+          "Yes — the board may increase authorised shares of any class unless the MOI provides otherwise; no special resolution is required here."
+        ]
+      },
+      {
+        source: "2019 A1S2 · Q1(b)",
+        marks: "5 (max)",
+        q: "Advise which steps are needed to increase authorised Class A shares from 500 to 1000, assuming the MOI is silent on the point.",
+        sections: ["s16(1)(b)", "s36(2)(a)", "s36(2)(b)", "s36(3)(a)", "s36(4)"],
+        a: [
+          "Two independent routes: shareholders may amend the MOI by special resolution (s36(2)(a)); or the board may itself increase authorised shares (s36(2)(b) read with s36(3)(a)), unless the MOI says otherwise.",
+          "If the board acts, it must file a notice of amendment recording the change (s36(4)).",
+          "Since the MOI is silent, both the board and the shareholders have the power here — a good example of the two alternative routes examiners like to test."
+        ]
+      },
+      {
+        source: "2022 A1S2 · Q1.1",
+        marks: "4",
+        q: "ABC (Pty) Ltd.'s MOI expressly prohibits directors from amending the number of shares. Can the directors, Abigail and Kutullo, still increase Class A shares from 400 to 10 000?",
+        sections: ["s36(2)", "s36(3)(a)"],
+        a: [
+          "No — although s36 generally lets the board increase authorised shares, this power operates <b>\"except to the extent the MOI provides otherwise\"</b>.",
+          "Because the MOI here expressly removes that power from the directors, only the shareholders (via special resolution amending the MOI) can increase the shares."
+        ]
+      },
+      {
+        source: "Tutorial 7 · Q1(a)",
+        marks: "5",
+        q: "Pomegranate's MOI removes the board's power to amend the MOI. To authorise new Class M shares, is an MOI amendment needed, and who can do it?",
+        sections: ["s36(2)"],
+        a: [
+          "Yes, an MOI amendment is required to change class preferences/rights/limitations, and this can only be done by special resolution of the shareholders.",
+          "Because the MOI has stripped the board of this power in this scenario, <b>only the shareholders</b> (both Julia and Orange, needing the 75% special-resolution threshold) can pass it — the board has no fallback route here, unlike the 2019/2022 questions above."
+        ]
+      },
+      {
+        source: "Tutorial 7 · Q1(b)",
+        marks: "2",
+        q: "Once the MOI amendment succeeds, which organ issues the new Class M shares?",
+        sections: ["s38(1)"],
+        a: [
+          "The board must issue the shares (s38(1)), provided it doesn't issue beyond the newly authorised cap of 100 000."
+        ]
+      }
+    ]
+  },
+  {
+    id: "transfer",
+    title: "Share Transfer, Cession & the Securities Register",
+    desc: "Requirements for a valid transfer of certificated shares, and the significance of the securities register for who counts as a 'shareholder' able to vote.",
+    questions: [
+      {
+        source: "2018 A1S2 · Q4",
+        marks: "5",
+        q: "Chad stole Tanya's share certificate and forged her signature to 'sell' her shares to Patrick, who registered them in his name unaware of the deception. Is there a valid transfer?",
+        sections: ["cession requirements"],
+        a: [
+          "Certificated shares transfer by cession, requiring consensus between transferor and transferee.",
+          "A person other than the owner can only sell shares with the owner's authority; without it there is no consensus and no valid cession.",
+          "Chad had no authority from Tanya → no cession, no valid transfer took place — despite the shares being registered in Patrick's name."
+        ]
+      },
+      {
+        source: "Tutorial 7 · Q1(c)",
+        marks: "6",
+        q: "Julia sells her certificated shares to Thoriso without following s51's formalities. Can Thoriso vote to remove a director at the shareholders' meeting?",
+        sections: ["s1 'shareholder'", "s37(9)(a)", "s51(5)/(6)", "Oaklands v Gelria Mining"],
+        a: [
+          "A 'shareholder' is the holder of a share who is entered as such in the securities register.",
+          "s37(9)(a): a person acquires the rights of a security only once entered in the certificated securities register; s51(5)/(6) sets out what must be entered.",
+          "Oaklands v Gelria Mining: ownership and registration are separate — a company only recognises its <b>registered</b> shareholders.",
+          "Because Thoriso's name was never entered in the register (s51 formalities weren't followed), he cannot vote, even though he may have validly acquired the shares themselves."
+        ]
+      }
+    ]
+  },
+  {
+    id: "issuing",
+    title: "Issuing Shares, Consideration, Options & Pre-emptive Rights (ss 38–42)",
+    desc: "Board authority to issue shares within authorised limits, how consideration is determined and challenged, share options, and the 30% shareholder-approval threshold for large issues or issues to directors.",
+    questions: [
+      {
+        source: "2019 A1S2 · Q1(a)",
+        marks: "2 (max)",
+        q: "Three shareholders believe they don't hold 'securities' in the company because they only hold shares. Correct?",
+        sections: ["s1 'securities'", "s1 'share'"],
+        a: [
+          "Incorrect — s1 defines 'securities' to include shares, debentures, or other instruments issued by a profit company; 'share' is one of the units into which the proprietary interest is divided.",
+          "Shares are therefore a type of security — their view is wrong."
+        ]
+      },
+      {
+        source: "2022 A1S2 · Q1.2",
+        marks: "6",
+        q: "Can ABC (Pty) Ltd. issue 7 000 Class B shares to Malcolm, where only 6 000 are authorised and the MOI gives a right of first refusal on Class A shares only?",
+        sections: ["s38(1)", "s38(2)/(3)", "s39(2)"],
+        a: [
+          "The company may issue only shares authorised under s36 (s38(1)) — the 6 000 authorised Class B shares can validly be issued to Malcolm.",
+          "The excess 1 000 shares can be retroactively authorised within 60 business days (s38(2)); if that retroactive resolution fails, the excess issue is a nullity, consideration must be returned, and directors who knowingly voted for it face liability (s38(3)).",
+          "s39(2)'s pre-emptive right doesn't block this issue anyway, since the MOI restricts that right to Class A shares only, not Class B."
+        ]
+      },
+      {
+        source: "2023 A1S2 · Q1(b)",
+        marks: "5",
+        q: "XYZ Ltd. proposes Class A shareholders pay 2 Class A shares as consideration per Class B share acquired. Describe the process for determining consideration and whether it can be challenged.",
+        sections: ["s40(1)(a)", "s40(2)", "s40(3)", "s40(4)"],
+        a: [
+          "The board may issue shares only for adequate consideration, which it determines itself (s40(1)(a)); 'consideration' is defined broadly and isn't limited to money — shares of another company are valid consideration.",
+          "Before issuing, the board must determine the consideration and terms (s40(2)).",
+          "The board's determination of adequacy cannot be challenged except via s76 read with s77(2) — i.e. breach of fiduciary duty or a delict (s40(3)).",
+          "Once the approved consideration is received, the shares are fully paid and must be issued, with the holder's name entered on the securities register (s40(4))."
+        ]
+      },
+      {
+        source: "2024 A1S2 · Q3",
+        marks: "6",
+        q: "XYZ Ltd.'s board resolves to issue 300 Class A shares to Samantha (300/1000 existing Class A = 30%) and grant a share option to Zandile, a director. What prerequisites apply?",
+        sections: ["s41(3)", "s41(1)(a)", "s42(1)/(2)"],
+        a: [
+          "s41(3): an issue requiring shareholder approval by special resolution if the voting power of the new shares is ≥30% of the pre-transaction voting power of that class. 300 new vs 1000 existing = exactly 30% → special resolution needed (at least Motsamai and Petrus voting).",
+          "s41(1)(a): a share issue to a director always needs shareholder approval by special resolution — applies separately to Zandile's option regardless of the percentage.",
+          "s42(1)/(2): the company may issue options for shares, and the board determines the consideration and terms for both the option and the shares it relates to."
+        ]
+      }
+    ]
+  }
+];
+
+let progress = JSON.parse(localStorage.getItem('ml292progress') || '{}');
+
+// Built directly from each paper's memorandum — every line below mirrors an
+// individually-marked point in the actual mark scheme, not an estimate.
+const MARK_ALLOC = {
+  "2018 A1S2 · Q5": {
+    marks: [
+      "The Companies Act sets requirements where FA is given for the purpose of, or in connection with, acquiring its own shares — <b>1</b>",
+      "Standing surety is one of the examples of financial assistance listed in s44(2) — <b>1</b>",
+      "R500 000 total price, R100 000 of which is the loan account, so the shares are worth R400 000 — the R300 000 bank loan clearly (partially) funds the shares — <b>3</b>",
+      "Requirement 1: a special resolution of the shareholders — <b>1</b>",
+      "...adopted within the previous 2 years, for this recipient or a category they fall within — <b>1</b>",
+      "Requirement 2: the board is satisfied the company will pass the solvency and liquidity test immediately after — <b>1</b>",
+      "Requirement 3: the board is satisfied the terms are fair and reasonable to the company — <b>1</b>",
+      "Requirement 4: any MOI requirements must be met — <b>1</b>"
+    ]
+  },
+  "2019 A1S2 · Q3(a)": {
+    marks: [
+      "s44(2): the board may authorise FA for acquiring/subscribing for securities, subject to ss44(3)–(4) — <b>1</b>",
+      "FA may be given via loan, guarantee, or provision of security — <b>1</b>",
+      "...here it is facilitated through standing surety for the loan — <b>1</b>",
+      "s44(3): requires an employee share scheme (not applicable — no mark) OR a special resolution within the previous 2 years covering recipient/category — <b>1</b>",
+      "...plus the board satisfied on solvency and liquidity — <b>1</b>",
+      "...and that the terms are fair and reasonable — <b>1</b>",
+      "s44(4): any MOI conditions/restrictions on granting FA must be satisfied — <b>1</b>",
+      "Conclusion: Fruits Ltd. can stand surety, but it must be in connection with/for the purpose of the subscription of securities — <b>1</b>"
+    ],
+    note: "Max 5 of 8 available marks."
+  },
+  "2019 A1S2 · Q3(b)": {
+    marks: [
+      "s44(2) only covers assistance for the purpose of, or in connection with, subscribing/purchasing securities — <b>1</b>",
+      "A credit loan account is not connected to acquiring shares, so this doesn't qualify as FA under s44(2) — <b>1</b>"
+    ],
+    note: "Max 2."
+  },
+  "2019 A1S2 · Q3(c)": {
+    marks: [
+      "Identifying s44(2) as an alterable provision — <b>bonus mark</b>",
+      "The introduction to s44(2) ('except to the extent the MOI provides otherwise') means the MOI can prohibit FA — <b>1</b>",
+      "This means the MOI can validly prohibit the company from providing FA at all — <b>1</b>",
+      "Conclusion: the company would be prohibited from assisting Cabbage, regardless of the form the assistance takes — <b>1</b>"
+    ],
+    note: "Max 2 of 3 available, plus a bonus mark for identifying s44(2) as alterable."
+  },
+  "2022 A1S2 · Q3": {
+    marks: [
+      "s44 is the relevant provision for determining whether FA can be given for a share purchase — <b>1</b>",
+      "s44(2): board may authorise FA for subscribing/purchasing securities, unless the MOI provides otherwise — <b>1</b>",
+      "Analog's MOI does not prohibit FA of this kind — <b>1</b>",
+      "Requirement 1: pursuant to an employee share scheme or a special resolution within the previous 2 years covering recipient/category — <b>1</b>",
+      "The 2021 special resolution covers women under 35 — Ms Smith falls within this category — <b>1</b>",
+      "Requirement 2: board satisfied the company will pass the solvency and liquidity test — <b>1</b>",
+      "Requirement 3: board satisfied the terms are fair and reasonable to the company — <b>1</b>",
+      "Conclusion: the board is empowered to assist if all requirements are met — <b>1</b>",
+      "s77(5): Ms Mpe or the company may apply to court to set aside the board's decision — <b>1</b>",
+      "The court may set the decision aside or make any other just and equitable order — <b>1</b>"
+    ]
+  },
+  "2023 A1S2 · Q2(a)": {
+    marks: [
+      "Is s44(1) applicable? No, the exclusion doesn't apply — <b>1</b>",
+      "Providing a guarantee forms part of the examples in s44(2) — <b>1</b>",
+      "Confirmed by Lipschitz v UDC Bank as one of the listed examples — <b>1</b>",
+      "...an indication that financial assistance has been granted — <b>1</b>",
+      "Impoverishment test named (Gradwell v Rostra Printers) — <b>1</b>",
+      "Narrow sense: the company is not worse off, since no money was borrowed by the company itself — <b>1</b>",
+      "Wide sense: the company is commercially worse off, since it would have to cover the buyer's obligation if he defaults — <b>1</b>",
+      "Other considerations (at least one required): not ordinary course of business; no benefit to the company; Zolisa did need the assistance — <b>1</b>",
+      "Conclusion: financial assistance has been granted — <b>1</b>",
+      "The direct goal of the guarantee is to enable the share purchase — <b>1</b>",
+      "No need to consider 'in connection with' once the direct purpose is established — <b>1</b>",
+      "Question 2 answered positively — <b>1</b>",
+      "s44(3) consequently applies — <b>1</b>"
+    ],
+    note: "10 marks awarded, 13 available."
+  },
+  "2023 A1S2 · Q2(b)": {
+    marks: [
+      "s44(1) would then apply — <b>1</b>",
+      "XYZ Ltd. would be lending money in the ordinary course of its business, since money-lending is its primary business — <b>1</b>",
+      "This is excluded by s44(1), so s44(3)'s requirements would not need to be met — <b>1</b>"
+    ]
+  },
+  "2024 A1S2 · Q1": {
+    marks: [
+      "Is s44(1) applicable? No — <b>1</b>",
+      "None of the s44(2) examples apply on these facts — <b>1</b>",
+      "...as confirmed by Lipschitz v UDC Bank — <b>1</b>",
+      "Impoverishment test named (Gradwell v Rostra Printers) — <b>1</b>",
+      "Narrow sense: not financially worse off — the company received an asset (the vehicle) for its money — <b>1</b>",
+      "Wide sense: the money could have been spent more productively than on an unused asset — <b>1</b>",
+      "...and the asset isn't used to maximise the company's profits — <b>1</b>",
+      "Other considerations: not in the ordinary course of business, no benefit to the company — <b>1</b>",
+      "Question 1 conclusion: financial assistance was granted — <b>1</b>",
+      "Question 2: the assistance was for enabling the share purchase, not for acquiring the asset — <b>1</b>",
+      "No need to consider the 'in connection with' leg since the direct purpose is known — <b>1</b>",
+      "Question 2 conclusion: answered positively — <b>1</b>",
+      "Overall conclusion: financial assistance was granted under s44(2), so s44(3) applies — <b>1</b>"
+    ],
+    note: "10 marks awarded, 13 available."
+  },
+  "Tutorial 8 · Q2": {
+    marks: [
+      "Determine whether the transaction meets s44(2) — <b>½</b>",
+      "One of the s44(2) examples ('provision of security') applies — financial assistance — <b>1</b>",
+      "Confirmed by Lipschitz v UDC Bank — falling within a listed example is a good indication of FA — <b>1</b>",
+      "s44(1) does not apply — <b>½</b>",
+      "Impoverishment test named (Gradwell v Rostra Printers) — <b>½</b>",
+      "Narrow sense: not worse off financially — liabilities are reorganised, not increased — <b>½</b>",
+      "Wide sense: not worse off commercially — certainty over repayment terms vs. repayable on demand — <b>½</b>",
+      "None of the other considerations point to financial assistance — <b>1</b>",
+      "The financial assistance was given for the purchase of the seller's loan account, not directly for the share purchase — <b>1</b>",
+      "The direct purpose was to secure repayment of existing company debt — <b>1</b>",
+      "No need to consider the 'in connection with' leg since the direct purpose is known — <b>1</b>",
+      "Conclusion: No — s44(3)'s requirements do not have to be met — <b>1</b>"
+    ],
+    note: "10 marks awarded, ~11 available."
+  },
+  "2018 A1S2 · Q3": {
+    marks: [
+      "The offer is made to a section of the public (s95 definition) — <b>1</b>",
+      "No exclusions to the definition of 'offer to the public' apply — <b>1</b>",
+      "The offer therefore amounts to an 'offer to the public' — <b>1</b>",
+      "Not an initial public offer, since EC previously made a public offer — <b>1</b>",
+      "A primary offering of unlisted shares requires registration of a prospectus (s99(3)(a)(ii)) — <b>1</b>"
+    ]
+  },
+  "2019 A1S2 · Q2(b)": {
+    marks: [
+      "The offer to women in the Western Cape is to a section of the public (s95(1)(h)(i)(dd)) — <b>1</b>",
+      "It is a primary offer, since new shares are being issued (s95(1)(i)) — <b>1</b>",
+      "As unlisted securities, s99(3)(a)(ii) requires a registered prospectus — <b>1</b>",
+      "(Credit was also available for reasoning about exchange rules if listed status were assumed) — <b>1</b>"
+    ],
+    note: "Max 3 of 4 available."
+  },
+  "2019 A1S2 · Q2(c)": {
+    marks: [
+      "Goldfields: the offer was made to existing shareholders to acquire specific private property, not a mere section of the public — <b>1</b>",
+      "The offer was therefore not an 'offer to the public' requiring a prospectus — <b>1</b>"
+    ]
+  },
+  "2023 A1S2 · Q1(a)": {
+    marks: [
+      "'Offer to the public' (s95(1)(h)) includes an offer to any selection of the public, including holders of the company's securities — <b>1</b>",
+      "XYZ Ltd.'s offer is made to holders of the company's securities — a selection of the public — <b>1</b>",
+      "s96(1)(c) excludes non-renounceable offers made only to existing shareholders/related persons — <b>1</b>",
+      "But the offer also went to directors, who fall outside that category — the exclusion does not apply — <b>1</b>",
+      "The test is to whom the offer is made, not who accepts it — <b>1</b>",
+      "s95(1)(i): a 'primary offering' is an offer to the public of securities to be issued by the company — <b>1</b>",
+      "September 2023 is a primary offering — <b>1</b>",
+      "Not an IPO, since the securities were previously offered to the public in June 2022 — <b>1</b>",
+      "s99(3)(a)(ii): a primary offer of unlisted securities requires a registered prospectus — <b>1</b>",
+      "Conclusion: an offer to the public of unlisted securities — <b>1</b>",
+      "A prospectus must be registered — <b>1</b>"
+    ],
+    note: "10 marks awarded, 11 available."
+  },
+  "2024 A1S2 · Q4": {
+    marks: [
+      "'Offer to the public' (s95(1)(h)) includes an offer to any section of the public — <b>1</b>",
+      "Per Goldfields v Harmony Gold (SCA 2004): must be capable of extending to the public at large/a random section — <b>1</b>",
+      "The offer constitutes a selection of the public — bakers in Cape Town — <b>1</b>",
+      "s96(1)(e) excludes an offer made only to a director unless renounceable — <b>1</b>",
+      "The offer was made to bakers generally, not only directors — the exclusion doesn't apply — <b>1</b>",
+      "s95(1)(i): a 'primary offering' is an offer to the public of securities to be issued by the company — <b>1</b>",
+      "This is a primary offering — <b>1</b>",
+      "Not an IPO, since securities were previously offered in January 2024 — <b>1</b>",
+      "s99(3)(a)(i): a primary offer of listed securities follows the exchange's rules, not a prospectus requirement — <b>1</b>",
+      "Conclusion: an offer to the public of listed securities — <b>1</b>",
+      "Therefore, no prospectus is required — <b>1</b>"
+    ]
+  },
+  "Tutorial 7 · Q2": {
+    marks: [
+      "'Offer to the public' (s95(1)(h)) includes an offer to any section of the public, however selected — <b>1</b>",
+      "Per Gold Fields Ltd v Harmony Gold: must be capable of being extended to and accepted by the public at large or a random section — <b>1</b>",
+      "Bakery owners in Cape Town constitute a selected section of the public — an offer to the public — <b>1</b>",
+      "s95(1)(i): 'primary offering' defined — <b>1</b>",
+      "This is a primary offering, not the company's IPO (prior public offer already made) — <b>1</b>",
+      "s99(3)(a)(ii): unlisted securities require a registered prospectus satisfying s100 — <b>1</b>",
+      "Pastries Ltd. is required to register a prospectus — <b>1</b>",
+      "Conclusion: an offer to the public of unlisted shares — <b>1</b>",
+      "Therefore a prospectus will have to be registered — <b>1</b>"
+    ]
+  },
+  "Tutorial 7 · Q3": {
+    marks: [
+      "s99(11): a prospectus may not be issued more than 3 months after registration — <b>1</b>",
+      "Registered 1 Feb, had to be issued by 1 May; issued 5 May — non-compliant, treated as unregistered — <b>1</b>",
+      "s107: a company may not allot securities/accept subscriptions more than 4 months after the prospectus was filed — <b>1</b>",
+      "The 4-month period runs from the filing date (10 Jan) — stale after 10 May — <b>1</b>",
+      "Shares allotted 15 May, outside that window — also non-compliant with s107 — <b>1</b>"
+    ]
+  },
+  "2018 A1S2 · Q2(d)": {
+    marks: [
+      "No — <b>1</b>",
+      "EC is buying back/acquiring its own shares — <b>1</b>",
+      "The shares are being acquired from a director (Nondu), requiring a special resolution under s48(8)(a) — <b>1</b>"
+    ]
+  },
+  "2019 A1S2 · Q2(a)": {
+    marks: [
+      "The board may resolve the company will acquire its own shares (s48(2)(a)), subject to s46 — <b>1</b>",
+      "A 'distribution' includes consideration for the company's acquisition of its own shares (s1(a)(iii)(aa)) — <b>1</b>",
+      "s46(1): the board must authorise the distribution and be satisfied the company will pass the solvency and liquidity test — <b>1</b>",
+      "s48(3): an acquisition may not leave only convertible/redeemable shares in issue — not triggered here since other classes remain — <b>1</b>",
+      "Since some shares are being bought back from a director (Strawberry), s48(8)(a) requires a special resolution for that portion — <b>1</b>",
+      "Resulting status of the acquired shares: authorised but not issued (s35(5)(a)) — <b>1</b>"
+    ],
+    note: "Max 5 — the memo also credits several further sub-points on ss46(1)–(3) and 46(6) beyond this core set."
+  },
+  "2022 A1S2 · Q2": {
+    marks: [
+      "A share repurchase is a distribution, so the solvency and liquidity tests must be met — <b>1</b>",
+      "After the repurchase, shares must remain in issue other than convertible/redeemable ones — <b>1</b>",
+      "Some shares must be held by shareholders other than the company's subsidiaries — <b>1</b>",
+      "If shares are acquired from directors, a special resolution is required (s48(8)(a)) — <b>1</b>",
+      "If it later emerges the company can't meet its obligations, the agreement remains enforceable — <b>1</b>",
+      "The company must apply to court for an order suspending the repurchase — <b>1</b>",
+      "The company bears the burden of proving it cannot meet the Act's requirements — <b>1</b>",
+      "The court may make any just and equitable order ensuring payment as soon as the company can also meet its other obligations — <b>1</b>",
+      "If the repurchase has already completed unlawfully, the company must apply within 2 years for a court order to reverse it — the seller returns the consideration, and the company reissues the same shares — <b>1</b>",
+      "Directors who approved an unlawful repurchase are personally liable in the same manner — <b>1</b>"
+    ]
+  },
+  "2023 A1S2 · Q3": {
+    marks: [
+      "s46(6) must be cited — omitting this costs a mark even if the requirements below are correct — <b>1</b>",
+      "The director must have been present at the meeting where the distribution was approved (or have participated) — <b>1</b>",
+      "The director must have failed to vote against the distribution, despite knowing it didn't meet s46's requirements — <b>1</b>"
+    ]
+  },
+  "2024 A1S2 · Q2": {
+    marks: [
+      "The definition of 'distribution' (s1) includes the transfer of property, incurring debt, or waiving debt — <b>1</b>",
+      "Here we are dealing with the transfer of property (the vehicle) — <b>1</b>",
+      "The transfer is to a holder of shares in the company (Jaco) — <b>1</b>",
+      "It is therefore a distribution — <b>1</b>",
+      "It must comply with the requirements set out in s46 — <b>1</b>"
+    ]
+  },
+  "Tutorial 8 · Q1": {
+    marks: [
+      "s48(8)(a) requires a board decision to acquire shares from a director to be approved by special resolution of shareholders — <b>1</b>",
+      "Sizwe is a director, and the shareholders did not pass a special resolution — <b>1</b>",
+      "The acquisition therefore does not comply with s48(8)(a) — <b>1</b>",
+      "s48(3) prohibits an acquisition that would leave only convertible/redeemable shares in issue — <b>1</b>",
+      "Since only redeemable shares would remain, the acquisition also contravenes s48(3) — <b>1</b>",
+      "ss48(7)/77(3)(e)(vii): a director may be personally liable if present/participating and failing to vote against the acquisition, despite knowing it was contrary to ss46/48 — <b>1</b>",
+      "All three directors were present and expressly warned beforehand, yet voted in favour anyway — <b>1</b>",
+      "The company failed the solvency-and-liquidity test immediately after, and it was unreasonable for the directors to conclude otherwise given the warning — <b>1</b>",
+      "The requirements for liability relating to an unlawful distribution are therefore satisfied — <b>1</b>",
+      "Liability calculation: R600 000 actually distributed − R450 000 maximum lawful amount = R150 000 excess distribution — <b>1</b>",
+      "R150 000 excess − R50 000 recovered from Sizwe = R100 000 potential liability — <b>1</b>"
+    ]
+  },
+  "2018 A1S2 · Q2(b)": {
+    marks: [
+      "Yes — <b>1</b>",
+      "The board may increase the number of authorised shares of any class, unless the MOI provides otherwise — <b>1</b>"
+    ]
+  },
+  "2019 A1S2 · Q1(b)": {
+    marks: [
+      "s16(1)(b): the MOI may be amended in the manner contemplated in s36(3)/(4) — <b>bonus mark</b>",
+      "s66(1): the business and affairs are managed by the board, except to the extent the Act/MOI provides otherwise — <b>bonus mark</b>",
+      "s36(2)(a): the number of authorised shares can be changed by amending the MOI via special resolution of shareholders — <b>1</b>",
+      "s36(2)(b): the board can also change the number of authorised shares under s36(3), unless the MOI specifies otherwise — <b>1</b>",
+      "s36(3)(a): the board may increase/decrease authorised shares of any class, except to the extent the MOI provides otherwise — <b>1</b>",
+      "s36(4): if the board acts under s36(3), the company must file a notice of amendment recording the change — <b>1</b>",
+      "Conclusion: since the MOI is silent, both the board and the shareholders have the power to increase the shares from 500 to 1000 — <b>1</b>"
+    ],
+    note: "Max 5, plus 2 bonus marks available."
+  },
+  "2022 A1S2 · Q1.1": {
+    marks: [
+      "ABC (Pty) Ltd. is a private company, requiring at least 1 director (s66(2)(a)) — satisfied since both Kutullo and Abigail are directors — <b>½ + ½</b>",
+      "s36(2): the number of authorised shares may be changed only by (a) special resolution amending the MOI, or (b) the board under s36(3), except to the extent the MOI provides otherwise — <b>1</b>",
+      "s36(3)(a): the board may increase/decrease authorised shares unless the MOI says otherwise — <b>1</b>",
+      "ABC's MOI specifically prohibits directors from amending the number of shares — <b>1</b>",
+      "Conclusion: Kutullo and Abigail cannot, in their capacity as directors, increase the shares from 400 to 10 000 — <b>1</b>"
+    ],
+    note: "Max 4 of 5 available."
+  },
+  "Tutorial 7 · Q1(a)": {
+    marks: [
+      "s36(2): preferences, rights, limitations and terms of each share class can only be changed by amending the MOI via special resolution — <b>1</b>",
+      "The MOI would require an amendment here — <b>1</b>",
+      "Only the shareholders — both Julia and Orange — would vote on this — <b>1</b>",
+      "A special resolution requires at least 75% — <b>1</b>",
+      "This is because the power to amend the MOI has been removed from the board in this scenario — <b>1</b>"
+    ]
+  },
+  "Tutorial 7 · Q1(b)": {
+    marks: [
+      "s38(1): the board may resolve to issue shares at any time, but only to the extent authorised in the MOI per s36 — <b>1</b>",
+      "The board must issue the shares, ensuring it doesn't exceed the 100 000 authorised cap for Pomegranate — <b>1</b>"
+    ]
+  },
+  "2018 A1S2 · Q4": {
+    marks: [
+      "Certificated shares transfer by cession, requiring consensus between transferor and transferee — <b>3</b>",
+      "On the facts, Chad did not have Tanya's authority to sell the shares — so no cession, and no transfer, took place — <b>2</b>"
+    ]
+  },
+  "Tutorial 7 · Q1(c)": {
+    marks: [
+      "'Shareholder' means the holder of a share who is entered as such in the securities register — <b>1</b>",
+      "'Securities' means any shares or debentures issued or authorised to be issued by a profit company — <b>1</b>",
+      "s37(9)(a): a person acquires the rights of particular securities only once entered in the certificated securities register — <b>1</b>",
+      "For certificated securities, required details must be entered per s51(5) read with s51(6) — <b>1</b>",
+      "Per Oaklands v Gelria Mining, ownership and registration are separate — a company only recognises registered shareholders — <b>1</b>",
+      "Since Thoriso's name isn't entered in the register, he cannot vote on the removal of Robin Thine — <b>1</b>"
+    ]
+  },
+  "2019 A1S2 · Q1(a)": {
+    marks: [
+      "'Securities' (s1) means any shares, debentures or other instruments issued or authorised to be issued by a profit company — <b>1</b>",
+      "'Share' (s1) means one of the units into which the proprietary interest is divided — <b>1</b>",
+      "Since shares fall within the definition of securities, the shareholders do hold securities — their view is incorrect — <b>1</b>"
+    ],
+    note: "Max 2 of 3 available."
+  },
+  "2022 A1S2 · Q1.2": {
+    marks: [
+      "s38(1): the board may resolve to issue shares at any time, but only within the classes/extent authorised in the MOI per s36 — <b>1</b>",
+      "s38(2): shares issued beyond what's authorised may be retroactively authorised within 60 business days — <b>1</b>",
+      "ABC (Pty) Ltd. can issue the 6 000 authorised Class B shares to Malcolm — <b>½ + ½ + ½</b>",
+      "The remaining 1 000 shares exceed what's authorised, but may be retroactively authorised — <b>½ + ½</b>",
+      "As a private company, s39(2)'s pre-emptive right applies — <b>1</b>",
+      "But the MOI restricts that right to Class A shares only, and this issue concerns Class B shares — doesn't block the issue — <b>½ + ½</b>",
+      "It's advisable to issue only the authorised 6 000 shares, given ss38(2)–(3) — <b>½ + ½</b>",
+      "s38(3): if the retroactive-authorisation resolution fails, the excess issue is a nullity — <b>½</b>",
+      "...the company must refund the fair value of consideration received — <b>½</b>",
+      "...any certificate/register entry for the nullified shares is void — <b>½</b>",
+      "...and a director who knowingly voted for the unauthorised issue faces liability under s77(3)(e)(i) — <b>½ + ½</b>"
+    ],
+    note: "Max 6 of 10 available."
+  },
+  "2023 A1S2 · Q1(b)": {
+    marks: [
+      "s40(1)(a): the board may only issue shares for adequate consideration, which the board itself determines — <b>1</b>",
+      "s1 defines 'consideration' broadly — not limited to money — <b>1</b>",
+      "s40(2): before issuing shares, the board must determine the consideration and terms of issue — <b>1</b>",
+      "s40(3): the board's determination of adequacy can only be challenged via s76 read with s77(2) — <b>1</b>",
+      "s40(4): once the approved consideration is received, the shares are fully paid, must be issued, and the holder's name entered on the securities register — <b>1</b>"
+    ]
+  },
+  "2024 A1S2 · Q3": {
+    marks: [
+      "s41(3): a share issue needs shareholder approval by special resolution if the new shares' voting power is ≥30% of the pre-transaction voting power of that class — <b>1</b>",
+      "300 new Class A shares vs 1 000 existing = exactly 30% — the threshold is triggered — <b>1</b>",
+      "At least Motsamai and Petrus must vote in favour to pass the special resolution — <b>1</b>",
+      "s41(1)(a): an issue of shares to a director always requires shareholder approval by special resolution — <b>1</b>",
+      "Since Zandile is a director, her option issue also needs a special resolution voted by at least Motsamai and Petrus — <b>1</b>",
+      "s42(1): the company may issue options for authorised shares — <b>½</b>",
+      "s42(2): the board determines the consideration/benefit and terms for both the option and underlying shares — <b>½</b>",
+      "The board may issue this option to Zandile and determine the consideration and terms — <b>½ + ½</b>"
+    ],
+    note: "6 marks awarded, 7 available."
+  }
+};
+
+let activeFilter = 'all';
+
+function cardId(topicId, idx){ return topicId + '-' + idx; }
+
+function saveProgress(){ localStorage.setItem('ml292progress', JSON.stringify(progress)); }
+
+function setStatus(id, status){
+  if(progress[id] === status){ delete progress[id]; }
+  else { progress[id] = status; }
+  saveProgress();
+  renderAll();
+}
+
+function toggleCard(el){
+  el.classList.toggle('open');
+}
+
+function renderStats(){
+  let totalQ = 0;
+  DATA.forEach(t => totalQ += t.questions.length);
+  const confident = Object.values(progress).filter(v=>v==='confident').length;
+  const review = Object.values(progress).filter(v=>v==='review').length;
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><div class="num">${DATA.length}</div><div class="lbl">Topics</div></div>
+    <div class="stat"><div class="num">${totalQ}</div><div class="lbl">Questions</div></div>
+    <div class="stat"><div class="num" style="color:var(--good)">${confident}</div><div class="lbl">Confident</div></div>
+    <div class="stat"><div class="num" style="color:var(--bad)">${review}</div><div class="lbl">To review</div></div>
+  `;
+}
+
+function renderInsight(){
+  document.getElementById('insightBox').innerHTML =
+    `<b>What repeats the most:</b> Financial assistance (s44) and offer-to-the-public/prospectus questions (ss95–107) appear in nearly every single paper sampled — treat those two topics as near-certainties. ` +
+    `The clearest repeat is <b>"Pastries Ltd."</b> — the 2024 exam and Tutorial 7 use the same company and near-identical facts, differing only in whether the securities are listed or unlisted (which flips the answer). ` +
+    `Distributions/share-buybacks (ss46/48) and increasing authorised shares (s36) are the next most common. The true/false block and the transfer/cession scenarios appear less often but are worth knowing cold since they test foundational sections quickly.`;
+}
+
+function renderChips(){
+  const chipRow = document.getElementById('chipRow');
+  let html = `<div class="chip ${activeFilter==='all'?'active':''}" onclick="setFilter('all')">All topics</div>`;
+  DATA.forEach(t=>{
+    html += `<div class="chip ${activeFilter===t.id?'active':''}" onclick="setFilter('${t.id}')">${t.title.split('(')[0].trim()}</div>`;
+  });
+  chipRow.innerHTML = html;
+}
+
+function setFilter(id){
+  activeFilter = id;
+  renderAll();
+}
+
+function renderMain(){
+  const search = document.getElementById('search').value.toLowerCase();
+  const main = document.getElementById('main');
+  let html = '';
+
+  DATA.forEach(topic => {
+    if(activeFilter !== 'all' && activeFilter !== topic.id) return;
+
+    const matchingQs = topic.questions.filter(q=>{
+      if(!search) return true;
+      const hay = (q.q + ' ' + q.source + ' ' + q.sections.join(' ') + ' ' + q.a.join(' ')).toLowerCase();
+      return hay.includes(search);
+    });
+    if(matchingQs.length === 0) return;
+
+    html += `<div class="topic">
+      <div class="topic-head">
+        <h2>${topic.title}</h2>
+        <div class="freq ${topic.hot ? 'hot' : ''}">Tested ${topic.questions.length}× in this set</div>
+      </div>
+      <div class="topic-desc">${topic.desc}</div>`;
+
+    matchingQs.forEach((q, i) => {
+      const idx = topic.questions.indexOf(q);
+      const id = cardId(topic.id, idx);
+      const status = progress[id];
+      const tagClass = status === 'confident' ? 'tag-confident' : (status === 'review' ? 'tag-review' : '');
+
+      html += `
+        <div class="card ${tagClass}" id="card-${id}">
+          <div class="card-head" onclick="toggleCard(document.getElementById('card-${id}'))">
+            <div>
+              <div class="card-source">${q.source}</div>
+              <div class="card-q">${q.q}</div>
+            </div>
+            <div class="card-right">
+              <div class="marks">[${q.marks}]</div>
+              <div class="caret">▶</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="card-inner">
+              <div class="answer-lbl">Model answer</div>
+              <div class="answer"><ul>${q.a.map(li=>`<li>${li}</li>`).join('')}</ul></div>
+              ${MARK_ALLOC[q.source] ? `
+              <div class="mark-breakdown">
+                <div class="mark-breakdown-title">Individual mark allocation (per the memorandum)</div>
+                <ul>${MARK_ALLOC[q.source].marks.map(item=>`<li>${item}</li>`).join('')}</ul>
+                ${MARK_ALLOC[q.source].note ? `<div class="mark-breakdown-note">${MARK_ALLOC[q.source].note}</div>` : ''}
+              </div>` : ''}
+              <div class="sections">${q.sections.map(s=>`<span class="sec-tag">${s}</span>`).join('')}</div>
+              <div class="progress-btns">
+                <button class="pbtn confident ${status==='confident'?'active':''}" onclick="event.stopPropagation(); setStatus('${id}','confident')">✓ Confident</button>
+                <button class="pbtn review ${status==='review'?'active':''}" onclick="event.stopPropagation(); setStatus('${id}','review')">↻ Needs review</button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+    });
+
+    html += `</div>`;
+  });
+
+  if(!html){
+    html = `<p style="color:var(--sub); text-align:center; padding:40px 0;">No questions match your search.</p>`;
+  }
+  main.innerHTML = html;
+}
+
+function renderAll(){
+  renderStats();
+  renderInsight();
+  renderChips();
+  renderMain();
+}
+
+renderAll();
+</script>
+</body>
+</html>
